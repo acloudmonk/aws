@@ -1,0 +1,135 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Globals:
+  Function:
+    Timeout: 10
+    Runtime: python3.12
+
+Resources:
+
+# ---------------- S3 Bucket ----------------
+  MyBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      NotificationConfiguration:
+        EventBridgeConfiguration:
+          EventBridgeEnabled: true
+
+# ---------------- Lambda Functions ----------------
+
+  Lambda1Function:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambda/lambda1/
+      Handler: app.lambda_handler
+      Policies:
+        - AmazonSSMReadOnlyAccess
+
+  Lambda2Function:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambda/lambda2/
+      Handler: app.lambda_handler
+      Policies:
+        - AmazonSESFullAccess
+
+  Lambda3Function:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambda/lambda3/
+      Handler: app.lambda_handler
+      Policies:
+        - AmazonSNSFullAccess
+
+# ---------------- Step Function ----------------
+
+  MyStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Definition:
+        StartAt: Lambda1
+        States:
+
+          Lambda1:
+            Type: Task
+            Resource: !GetAtt Lambda1Function.Arn
+            ResultPath: "$.lambda1_output"
+            Next: ChoiceState
+
+          ChoiceState:
+            Type: Choice
+            Choices:
+              - Variable: $.notification_type
+                StringEquals: "ses"
+                Next: Lambda2
+              - Variable: $.notification_type
+                StringEquals: "sns"
+                Next: Lambda3
+
+          Lambda2:
+            Type: Task
+            Resource: !GetAtt Lambda2Function.Arn
+            InputPath: "$"
+            End: true
+
+          Lambda3:
+            Type: Task
+            Resource: !GetAtt Lambda3Function.Arn
+            InputPath: "$"
+            End: true
+
+# ---------------- EventBridge Rule ----------------
+
+  EventBridgeRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventPattern:
+        source:
+          - "aws.s3"
+        detail-type:
+          - "Object Created"
+      Targets:
+        - Arn: !Ref MyStateMachine
+          Id: "StepFunctionTarget"
+          RoleArn: !GetAtt EventBridgeRole.Arn
+          InputTransformer:
+            InputPathsMap:
+              bucket: "$.detail.bucket.name"
+              key: "$.detail.object.key"
+            InputTemplate: |
+              {
+                "bucket": "<bucket>",
+                "key": "<key>"
+              }
+
+# ---------------- IAM Role ----------------
+
+  EventBridgeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StartStepFunction
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action: states:StartExecution
+                Resource: "*"
+
+NotificationParameter:
+  Type: AWS::SSM::Parameter
+  Properties:
+    Name: /notification_type
+    Type: String
+    Value: ses
+    Description: Notification type (ses or sns)
+
+Outputs:
+  BucketName:
+    Value: !Ref MyBucket
