@@ -108,6 +108,13 @@ Resources:
             Resource: !GetAtt Lambda3Function.Arn
             InputPath: "$"
             End: true
+    Policies:
+      - LambdaInvokePolicy:
+          FunctionName: !Ref Lambda1Function
+      - LambdaInvokePolicy:
+          FunctionName: !Ref Lambda2Function
+      - LambdaInvokePolicy:
+          FunctionName: !Ref Lambda3Function
 
 # ---------------- EventBridge Rule ----------------
 
