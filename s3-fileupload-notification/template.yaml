@@ -109,12 +109,16 @@ Resources:
             InputPath: "$"
             End: true
     Policies:
-      - LambdaInvokePolicy:
-          FunctionName: !Ref Lambda1Function
-      - LambdaInvokePolicy:
-          FunctionName: !Ref Lambda2Function
-      - LambdaInvokePolicy:
-          FunctionName: !Ref Lambda3Function
+    - PolicyName: LambdaInvokePolicy
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action:
+              - lambda:InvokeFunction
+            Resource:
+              - !GetAtt Lambda1Function.Arn
+              - !GetAtt Lambda2Function.Arn
+              - !GetAtt Lambda3Function.Arn
 
 # ---------------- EventBridge Rule ----------------
 
