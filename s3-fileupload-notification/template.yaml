@@ -84,7 +84,7 @@ Resources:
           Lambda1:
             Type: Task
             Resource: !GetAtt Lambda1Function.Arn
-            ResultPath: "$.lambda1_output"
+            ResultPath: "$"
             Next: ChoiceState
 
           ChoiceState:
