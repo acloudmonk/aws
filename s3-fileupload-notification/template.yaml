@@ -7,7 +7,6 @@ Globals:
     Runtime: python3.12
 
 Resources:
-
 # ---------------- S3 Bucket ----------------
   MyBucket:
     Type: AWS::S3::Bucket
@@ -15,6 +14,34 @@ Resources:
       NotificationConfiguration:
         EventBridgeConfiguration:
           EventBridgeEnabled: true
+
+# ---------------- SSM Param ----------------
+  NotificationParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /notification_type
+      Type: String
+      Value: ses
+      Description: Notification type (ses or sns)
+
+# ---------------- SNS Topic ----------------
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: notification-topic
+
+  SNSSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      Endpoint: sachinsingh2005@gmail.com
+      TopicArn: !Ref SNSTopic
+
+# ---------------- SES Identity ----------------
+  SESIdentity:
+    Type: AWS::SES::EmailIdentity
+    Properties:
+      EmailIdentity: sachinsingh2005@gmail.com
 
 # ---------------- Lambda Functions ----------------
 
@@ -35,12 +62,15 @@ Resources:
         - AmazonSESFullAccess
 
   Lambda3Function:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: lambda/lambda3/
-      Handler: app.lambda_handler
-      Policies:
-        - AmazonSNSFullAccess
+  Type: AWS::Serverless::Function
+  Properties:
+    CodeUri: lambda/lambda3/
+    Handler: app.lambda_handler
+    Environment:
+      Variables:
+        TOPIC_ARN: !Ref SNSTopic
+    Policies:
+      - AmazonSNSFullAccess
 
 # ---------------- Step Function ----------------
 
@@ -121,14 +151,6 @@ Resources:
               - Effect: Allow
                 Action: states:StartExecution
                 Resource: "*"
-
-NotificationParameter:
-  Type: AWS::SSM::Parameter
-  Properties:
-    Name: /notification_type
-    Type: String
-    Value: ses
-    Description: Notification type (ses or sns)
 
 Outputs:
   BucketName:
