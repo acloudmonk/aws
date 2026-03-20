@@ -62,15 +62,15 @@ Resources:
         - AmazonSESFullAccess
 
   Lambda3Function:
-  Type: AWS::Serverless::Function
-  Properties:
-    CodeUri: lambda/lambda3/
-    Handler: app.lambda_handler
-    Environment:
-      Variables:
-        TOPIC_ARN: !Ref SNSTopic
-    Policies:
-      - AmazonSNSFullAccess
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambda/lambda3/
+      Handler: app.lambda_handler
+      Environment:
+        Variables:
+          TOPIC_ARN: !Ref SNSTopic
+      Policies:
+        - AmazonSNSFullAccess
 
 # ---------------- Step Function ----------------
 
